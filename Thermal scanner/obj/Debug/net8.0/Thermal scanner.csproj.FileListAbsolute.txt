@@ -1,0 +1,15 @@
+/workspaces/BradyTechnology_Code/Thermal scanner/bin/Debug/net8.0/Thermal scanner
+/workspaces/BradyTechnology_Code/Thermal scanner/bin/Debug/net8.0/Thermal scanner.deps.json
+/workspaces/BradyTechnology_Code/Thermal scanner/bin/Debug/net8.0/Thermal scanner.runtimeconfig.json
+/workspaces/BradyTechnology_Code/Thermal scanner/bin/Debug/net8.0/Thermal scanner.dll
+/workspaces/BradyTechnology_Code/Thermal scanner/bin/Debug/net8.0/Thermal scanner.pdb
+/workspaces/BradyTechnology_Code/Thermal scanner/obj/Debug/net8.0/Thermal scanner.GeneratedMSBuildEditorConfig.editorconfig
+/workspaces/BradyTechnology_Code/Thermal scanner/obj/Debug/net8.0/Thermal scanner.AssemblyInfoInputs.cache
+/workspaces/BradyTechnology_Code/Thermal scanner/obj/Debug/net8.0/Thermal scanner.AssemblyInfo.cs
+/workspaces/BradyTechnology_Code/Thermal scanner/obj/Debug/net8.0/Thermal scanner.csproj.CoreCompileInputs.cache
+/workspaces/BradyTechnology_Code/Thermal scanner/obj/Debug/net8.0/Thermal scanner.sourcelink.json
+/workspaces/BradyTechnology_Code/Thermal scanner/obj/Debug/net8.0/Thermal scanner.dll
+/workspaces/BradyTechnology_Code/Thermal scanner/obj/Debug/net8.0/refint/Thermal scanner.dll
+/workspaces/BradyTechnology_Code/Thermal scanner/obj/Debug/net8.0/Thermal scanner.pdb
+/workspaces/BradyTechnology_Code/Thermal scanner/obj/Debug/net8.0/Thermal scanner.genruntimeconfig.cache
+/workspaces/BradyTechnology_Code/Thermal scanner/obj/Debug/net8.0/ref/Thermal scanner.dll
