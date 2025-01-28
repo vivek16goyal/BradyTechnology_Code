@@ -14,19 +14,28 @@ namespace GeneratorDataProcessor
             string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             string inputFolder = Path.Combine(desktopPath, "InputFolder");
             string outputFolder = Path.Combine(desktopPath, "OutputFolder");
-            string referenceDataPath = Path.Combine(desktopPath, "ReferenceFolder", "ReferenceData.xml");
+            string referenceFolder = Path.Combine(desktopPath, "ReferenceFolder");
+            string referenceDataPath = Path.Combine(referenceFolder, "ReferenceData.xml");
+
             // Create directories if they do not exist
             Directory.CreateDirectory(inputFolder);
             Directory.CreateDirectory(outputFolder);
-            Directory.CreateDirectory(Path.Combine(desktopPath, "ReferenceFolder"));
+            Directory.CreateDirectory(referenceFolder);
 
             // Watch for new files in the input folder
-            FileSystemWatcher watcher = new FileSystemWatcher(inputFolder, "*.xml")
+            using var watcher = new FileSystemWatcher(inputFolder, "*.xml")
             {
                 NotifyFilter = NotifyFilters.FileName
+                | NotifyFilters.LastWrite
             };
 
             watcher.Created += (sender, e) =>
+            {
+                Console.WriteLine($"Processing file: {e.Name}");
+                ProcessFile(e.FullPath, outputFolder, referenceDataPath);
+            };
+
+            watcher.Changed += (sender, e) =>
             {
                 Console.WriteLine($"Processing file: {e.Name}");
                 ProcessFile(e.FullPath, outputFolder, referenceDataPath);
@@ -47,81 +56,81 @@ namespace GeneratorDataProcessor
                 var referenceData = XDocument.Load(referenceDataPath);
 
                 // Extract reference factors
-                var valueFactors = referenceData.Root.Element("Factors").Element("ValueFactor");
-                var emissionsFactors = referenceData.Root.Element("Factors").Element("EmissionsFactor");
+                var valueFactorsElement = referenceData.Root.Element("Factors").Element("ValueFactor");
+                var emissionsFactorsElement = referenceData.Root.Element("Factors").Element("EmissionsFactor");
 
                 // Prepare output XML structure
-                var outputDoc = new XDocument(new XElement("GenerationOutput"));
-                var totals = new XElement("Totals");
-                var maxEmissions = new XElement("MaxEmissionGenerators");
-                var heatRates = new XElement("ActualHeatRates");
+                var outputDocument = new XDocument(new XElement("GenerationOutput"));
+                var totalsElement = new XElement("Totals");
+                var maxEmissionsElement = new XElement("MaxEmissionGenerators");
+                var heatRatesElement = new XElement("ActualHeatRates");
 
                 // Process each generator type
                 foreach (var generatorType in generationReport.Root.Elements())
                 {
                     foreach (var generator in generatorType.Elements())
                     {
-                        string name = generator.Element("Name").Value;
-                        string type = generatorType.Name.LocalName;
-                        string location = generator.Element("Location")?.Value;
+                        var generatorName = generator.Element("Name").Value;
+                        var generatorTypeLocalName = generatorType.Name.LocalName;
+                        var location = generator.Element("Location")?.Value;
 
                         // Get value factor and emission factor
-                        double valueFactor = GetFactor(valueFactors, location);
-                        double emissionFactor = GetFactor(emissionsFactors, location);
+                        var valueFactor = GetFactor(valueFactorsElement, location);
+                        var emissionFactor = GetFactor(emissionsFactorsElement, location);
 
                         // Calculate total generation value
-                        double totalGenerationValue = generator.Element("Generation").Elements("Day")
+                        var totalGenerationValue = generator.Element("Generation").Elements("Day")
                             .Sum(day => (double)day.Element("Energy") * (double)day.Element("Price") * valueFactor);
 
-                        totals.Add(new XElement("Generator",
-                            new XElement("Name", name),
+                        totalsElement.Add(new XElement("Generator",
+                            new XElement("Name", generatorName),
                             new XElement("Total", totalGenerationValue)));
 
                         // Calculate daily emissions and find the highest
-                        var dailyEmissions = generator.Element("Generation").Elements("Day")
-                            .Select(day => new
-                            {
-                                Date = day.Element("Date").Value,
-                                Emission = (double)day.Element("Energy") * (double)generator.Element("EmissionsRating") * emissionFactor
-                            })
-                            .OrderByDescending(e => e.Emission)
-                            .FirstOrDefault();
+                        var dailyEmissions = generator.Element("Generation")?.Elements("Day")
+                             .Select(day => new
+                             {
+                                 Date = day.Element("Date")?.Value,
+                                 Emission = (double.TryParse(day.Element("Energy")?.Value, out double energy) ? energy : 0)
+                                            * (double.TryParse(generator.Element("EmissionsRating")?.Value, out double emissionsRating) ? emissionsRating : 0)
+                                            * emissionFactor
+                             })
+                             .OrderByDescending(e => e.Emission)
+                             .FirstOrDefault();
 
                         if (dailyEmissions != null)
                         {
-                            maxEmissions.Add(new XElement("Day",
-                                new XElement("Name", name),
+                            maxEmissionsElement.Add(new XElement("Day",
+                                new XElement("Name", generatorName),
                                 new XElement("Date", dailyEmissions.Date),
                                 new XElement("Emission", dailyEmissions.Emission)));
                         }
 
                         // Calculate actual heat rate for coal generators
-                        if (type == "Coal")
+                        if (generatorTypeLocalName == "Coal")
                         {
-                            double totalHeatInput = (double)generator.Element("TotalHeatInput");
-                            double actualNetGeneration = (double)generator.Element("ActualNetGeneration");
-                            double actualHeatRate = totalHeatInput / actualNetGeneration;
+                            var totalHeatInput = (double)generator.Element("TotalHeatInput");
+                            var actualNetGeneration = (double)generator.Element("ActualNetGeneration");
+                            var actualHeatRate = totalHeatInput / actualNetGeneration;
 
-                            heatRates.Add(new XElement("ActualHeatRate",
-                                new XElement("Name", name),
+                            heatRatesElement.Add(new XElement("ActualHeatRate",
+                                new XElement("Name", generatorName),
                                 new XElement("HeatRate", actualHeatRate)));
                         }
                     }
                 }
 
-                outputDoc.Root.Add(totals);
-                outputDoc.Root.Add(maxEmissions);
-                outputDoc.Root.Add(heatRates);
+                outputDocument.Root.Add(totalsElement);
+                outputDocument.Root.Add(maxEmissionsElement);
+                outputDocument.Root.Add(heatRatesElement);
 
                 // Save the output XML
-                string outputFilePath = Path.Combine(outputFolder, Path.GetFileName(inputFilePath).Replace(".xml", "-Result.xml"));
-                outputDoc.Save(outputFilePath);
-
-                Console.WriteLine($"File processed successfully: {outputFilePath}");
+                var outputFilePath = Path.Combine(outputFolder, Path.GetFileName(inputFilePath).Replace(".xml", "-Result.xml"));
+                outputDocument.Save(outputFilePath);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error processing file: {ex.Message}");
+                throw;
             }
         }
 
